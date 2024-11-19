@@ -1,0 +1,2 @@
+1. Copy ```subset_1_filtered_updated_final_output.csv``` into the local folder, this is the raw output from the complete PDF extraction pipeline
+2. In ```process_raw_output.ipynb```, we demonstrate how different REGEX processing can be applied to the raw OCR output (md_extraction_result column)

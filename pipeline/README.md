@@ -1,4 +1,4 @@
-# Processing outputs from raw web scraping results
+# Processing outputs from raw web scraping results (raw_data_processing dir)
 
 * accelerate start point by looking at indo_journals_subsets, containing 47 subsets of ~10K PDFs each
     * can refer to ```collate_pdfs.py``` which processes raw ```/data``` directory containing web scrape output, which includes nested folders, duplicate files, irrelevant files (.txt, .html)

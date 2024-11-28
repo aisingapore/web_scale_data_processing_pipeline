@@ -1,0 +1,7 @@
+pyspark
+marker-pdf
+pandas
+pypdf
+pyspark
+anthropic
+openai

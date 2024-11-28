@@ -18,6 +18,7 @@ spark = SparkSession.builder.appName("PDF OCR Pipeline").getOrCreate()
 
 # Define the path to the indo_journals directory
 indo_journals_path = "/data/users/brandon/ob1-projects/data_processing/indo_journals_sample"
+output_path = "/data/users/brandon/ob1-projects/data_processing/goto_indo_journal_pipeline/pipeline/quality_filtering/sample_filtered.csv"
 # indo_journals_path = "/data/users/brandon/ob1-projects/data_processing/indo_journals_subsets/subset_4"
 
 # Define schema for the initial DataFrame
@@ -169,7 +170,6 @@ print(f"After relevance check: {result_df.count()}")
 # sampled_df = result_df.orderBy(rand()).limit(5)
 
 # Step 5: Save the resulting DataFrame as a single CSV file
-output_path = "/data/users/brandon/ob1-projects/data_processing/goto_indo_journal_pipeline/pipeline/quality_filtering/sample_filtered.csv"
 # output_path = "/data/users/brandon/ob1-projects/data_processing/subset_4_filtered_updated.csv"
 
 # Collect the results to the driver node

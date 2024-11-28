@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 # Load all models once
 model_lst = load_all_models()
 
+INPUT_FILE_PATH = "/home/ubuntu/us-south-fs/goto_indo_journal_pipeline/pipeline/ocr_text_extraction/sample_filtered_latest_25_pdf_path.csv"
+OUTPUT_FILE_PATH = "/home/ubuntu/us-south-fs/goto_indo_journal_pipeline/pipeline/ocr_text_extraction/sample_filtered_latest_25_final_output.csv"
+
 NUM_WORKERS = 4  # n(max_memory) / 2*(4.1 GB VRAM per Marker worker) e.g. 1x A100 (multi-GPU not multi-node) 40GB // 8.2GB = 5 max workers
 
 def process_pdf(pdf_path, parallel_factor=NUM_WORKERS):
@@ -124,7 +127,7 @@ extract_meaningful_text_udf = udf(extract_meaningful_text, StringType())
 start_time_total = time.time()
 
 # Load CSV file
-df = spark.read.csv("/root/projects/indo-journal-pipeline/sample_filtered_latest_25_pdf_path.csv", header=True, inferSchema=True)
+df = spark.read.csv(INPUT_FILE_PATH, header=True, inferSchema=True)
 
 # Filter rows where is_relevant is True
 filtered_df = df.filter(col("is_relevant") == True)
@@ -156,7 +159,7 @@ logging.info(f"Completed Step 2. Row count: {count_step2}. Duration: {duration_s
 
 # Collect the results to the driver node
 start_time_collect = time.time()
-results = result_df_step2.collect()
+results = result_df_step1.collect()
 end_time_collect = time.time()
 duration_collect = end_time_collect - start_time_collect
 logging.info(f"Collected results. Duration: {duration_collect:.2f} seconds")
@@ -164,7 +167,7 @@ logging.info(f"Collected results. Duration: {duration_collect:.2f} seconds")
 # Write the results to a single CSV file
 start_time_write = time.time()
 row_count = 0
-with open("/root/projects/indo-journal-pipeline/sample_filtered_latest_25_final_output.csv", "w", newline="", encoding="utf-8") as csvfile:
+with open(OUTPUT_FILE_PATH, "w", newline="", encoding="utf-8") as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(["pdf_path", "page_count", "md_extraction_result", "extracted_meaningful_text"])  # Write header
     for row in results:
@@ -179,7 +182,7 @@ logging.info(f"Wrote results to CSV. Duration: {duration_write:.2f} seconds")
 end_time_total = time.time()
 duration_total = end_time_total - start_time_total
 
-print(f"Results saved to: /root/projects/indo-journal-pipeline/sample_filtered_latest_25_final_output.csv")
+print(f"Results saved to: {OUTPUT_FILE_PATH}")
 print(f"Total number of rows in the CSV (including header): {row_count + 1}")
 print(f"Total duration: {duration_total:.2f} seconds")
 

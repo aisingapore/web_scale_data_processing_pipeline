@@ -1,3 +1,5 @@
 venv
 indo_journal_subsets
 pipeline/ocr_text_extraction/sample_filtered_latest_25_pdf_path.csv
+pipeline/ocr_text_extraction
+pipeline/quality_filtering/filtered_pdf_csvs

@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 # Load all models once
 model_lst = load_all_models()
 
-INPUT_FILE_PATH = "/home/ubuntu/us-south-fs/goto_indo_journal_pipeline/pipeline/ocr_text_extraction/sample_filtered_latest_25_pdf_path.csv"
-OUTPUT_FILE_PATH = "/home/ubuntu/us-south-fs/goto_indo_journal_pipeline/pipeline/ocr_text_extraction/sample_filtered_latest_25_final_output.csv"
+INPUT_FILE_PATH = "/home/ubuntu/us-south-fs/goto_indo_journal_pipeline/pipeline/quality_filtering/filtered_pdf_csvs/sample_debug.csv"
+OUTPUT_FILE_PATH = "/home/ubuntu/us-south-fs/goto_indo_journal_pipeline/pipeline/ocr_text_extraction/outputs/sample_debug.csv"
 
 NUM_WORKERS = 4  # n(max_memory) / 2*(4.1 GB VRAM per Marker worker) e.g. 1x A100 (multi-GPU not multi-node) 40GB // 8.2GB = 5 max workers
 
@@ -159,7 +159,7 @@ logging.info(f"Completed Step 2. Row count: {count_step2}. Duration: {duration_s
 
 # Collect the results to the driver node
 start_time_collect = time.time()
-results = result_df_step1.collect()
+results = result_df_step2.collect()
 end_time_collect = time.time()
 duration_collect = end_time_collect - start_time_collect
 logging.info(f"Collected results. Duration: {duration_collect:.2f} seconds")

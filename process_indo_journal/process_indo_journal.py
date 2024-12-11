@@ -7,8 +7,18 @@ import re
 from bs4 import BeautifulSoup
 from langchain_text_splitters import MarkdownHeaderTextSplitter
 from transformers import AutoTokenizer
+import time
 from utils import EXCLUDED_PDF_PATHS
+from tqdm import tqdm
+import signal
+tqdm.pandas()
 
+
+class TimeoutException(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimeoutException
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -54,16 +64,27 @@ class ProcessIndoJournal:
             return self._markdown_to_text(section.page_content)
         return f"## {self._markdown_to_text(section.metadata['Header']).strip()}\n\n{self._markdown_to_text(section.page_content)}"
 
-    def markdown_to_text(self, md_content):
-        md_split = self.markdown_splitter.split_text(md_content)
+    def markdown_to_text(self, row):
+        
+        # Set the signal handler and a 60-second alarm
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(60)
+        
+        try:
+            md_split = self.markdown_splitter.split_text(row.md_extraction_result)
 
-        # Replace metadata to only contain the lowest level header.
-        for section in md_split:
-            if section.metadata:
-                tmp_header = {int(k.replace("Header ", "")): v for k, v in section.metadata.items()}
-                section.metadata = {"Header": tmp_header[max(tmp_header.keys())].strip()}
+            # Replace metadata to only contain the lowest level header.
+            for section in md_split:
+                if section.metadata:
+                    tmp_header = {int(k.replace("Header ", "")): v for k, v in section.metadata.items()}
+                    section.metadata = {"Header": tmp_header[max(tmp_header.keys())].strip()}
 
-        return "\n\n".join([self.get_section_text(section) for section in md_split])
+            return "\n\n".join([self.get_section_text(section) for section in md_split])
+        except TimeoutException:
+            logger.error(f"Timeout error. Skipping the file: {row.pdf_path}")
+            return ""
+        finally:
+            signal.alarm(0)
 
     def apply_regex(self, markdown_content):
         content = '\n'.join(line.strip() for line in markdown_content.split('\n'))
@@ -76,7 +97,7 @@ class ProcessIndoJournal:
         content = re.sub(r'^(Tabel|Table) \d+[^\S\n\r]*?(\.|:).*?\n', '', content, flags=re.MULTILINE)
         
         # Remove keywords section
-        content = re.sub(r'^(?i)(key ?words?|(kata-)?kata kunci)[^\S\r\n]*(:|—|-).*?\n', '', content, flags=re.MULTILINE)
+        content = re.sub(r'(?i)^(key ?words?|(kata-)?kata kunci)[^\S\r\n]*(:|—|-).*?\n', '', content, flags=re.MULTILINE)
         content = re.sub(r'(?i)(key ?words?|(kata-)?kata kunci)[^\S\r\n]*(:|—|-).*?\n', '\n', content)
 
         # Remove URLs
@@ -90,7 +111,7 @@ class ProcessIndoJournal:
 
         # Remove correspondence address
         content = re.sub(r'(?i)alamat korespondensi\s*:(?:[^\n]*\n?){0,2}[^\n]* \d{5}', '', content, flags=re.MULTILINE)
-        content = re.sub(r'^(?i)alamat korespondensi\s*:.*\n', '', content, flags=re.MULTILINE)
+        content = re.sub(r'^alamat korespondensi\s*:.*\n', '', content, flags=re.MULTILINE | re.IGNORECASE)
 
         # Remove lines that only contain non alphabetic characters
         content = re.sub(r'^[^a-zA-Z]+\n', '', content, flags=re.MULTILINE)
@@ -103,15 +124,15 @@ class ProcessIndoJournal:
         return content
 
     def move_abstract_as_header(self, text):
-        pattern = r'\bA(?i)(bstrak|bstract)\b'
+        pattern = r'\bA(bstrak|bstract)\b'
         md_split = self.markdown_splitter.split_text(text)
 
         if (
-            len(md_split) > 1 and re.search(pattern, md_split[0].page_content)
-            or len(md_split) > 2 and re.search(pattern, md_split[1].page_content)
-            or len(md_split) > 3 and re.search(pattern, md_split[2].page_content)
+            len(md_split) > 1 and re.search(pattern, md_split[0].page_content, flags=re.IGNORECASE)
+            or len(md_split) > 2 and re.search(pattern, md_split[1].page_content, flags=re.IGNORECASE)
+            or len(md_split) > 3 and re.search(pattern, md_split[2].page_content, flags=re.IGNORECASE)
         ):
-            return re.sub(r'\bA(?i)(bstrak|bstract)\b[^a-zA-Z0-9]*', r'\n\n## A\1\n\n', text)
+            return re.sub(r'\bA(bstrak|bstract)\b[^a-zA-Z0-9]*', r'\n\n## A\1\n\n', text, flags=re.IGNORECASE)
 
         return text
 
@@ -126,13 +147,13 @@ class ProcessIndoJournal:
 
     def abstract_location(self, md_sections):
         for i, section in enumerate(md_sections):
-            if section.metadata and re.search(r'\bA(?i)(bstrak|bstract)\b', section.metadata["Header"]):
+            if section.metadata and re.search(r'\bA(?i:bstrak|bstract)\b', section.metadata["Header"]):
                 return i
         return -1
 
     def intro_location(self, md_sections):
         for i, section in enumerate(md_sections):
-            if section.metadata and re.search(r'\b(P|I)(?i)(endahuluan|ntroduction)\b', section.metadata["Header"]):
+            if section.metadata and re.search(r'\b(P|I)(?i:endahuluan|ntroduction)\b', section.metadata["Header"]):
                 return i
         return -1
 
@@ -196,20 +217,20 @@ class ProcessIndoJournal:
 
         # Process extracted text
         logger.info("Removing markdown format...")
-        df['extraction_result'] = df['md_extraction_result'].apply(lambda x: self.markdown_to_text(x))
+        df['extraction_result'] = df.progress_apply(self.markdown_to_text, axis=1)
         logger.info("Applying regex...")
-        df['applied_regex'] = df['extraction_result'].apply(self.apply_regex)
-        df['applied_regex'] = df['applied_regex'].apply(self.move_abstract_as_header)
+        df['applied_regex'] = df['extraction_result'].progress_apply(self.apply_regex)
+        df['applied_regex'] = df['applied_regex'].progress_apply(self.move_abstract_as_header)
         logger.info("Splitting files into MD sections...")
-        df['md_sections'] = df['applied_regex'].apply(self.split_md_sections)
-        df['abstract_location'] = df['md_sections'].apply(self.abstract_location)
-        df['intro_location'] = df['md_sections'].apply(self.intro_location)
+        df['md_sections'] = df['applied_regex'].progress_apply(self.split_md_sections)
+        df['abstract_location'] = df['md_sections'].progress_apply(self.abstract_location)
+        df['intro_location'] = df['md_sections'].progress_apply(self.intro_location)
         logger.info("Generating final output...")
-        df['extracted_meaningful_text_v2'] = df.apply(self.get_final_output, axis=1)
+        df['extracted_meaningful_text_v2'] = df.progress_apply(self.get_final_output, axis=1)
 
         # Filter short files (based on number of tokens)
         logger.info("Counting number of tokens...")
-        df['n_tokens'] = df['extracted_meaningful_text_v2'].apply(
+        df['n_tokens'] = df['extracted_meaningful_text_v2'].progress_apply(
             lambda x: self.tokenizer(x, return_tensors='pt')['input_ids'].shape[1]
         )
         df = df[df['n_tokens'] > self.min_token]

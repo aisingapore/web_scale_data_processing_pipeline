@@ -147,13 +147,13 @@ class ProcessIndoJournal:
 
     def abstract_location(self, md_sections):
         for i, section in enumerate(md_sections):
-            if section.metadata and re.search(r'(?i)\bA(bstrak|bstract)\b', section.metadata["Header"]):
+            if section.metadata and re.search(r'\bA(?i:bstrak|bstract)\b', section.metadata["Header"]):
                 return i
         return -1
 
     def intro_location(self, md_sections):
         for i, section in enumerate(md_sections):
-            if section.metadata and re.search(r'(?i)\b(P|I)(endahuluan|ntroduction)\b', section.metadata["Header"]):
+            if section.metadata and re.search(r'\b(P|I)(?i:endahuluan|ntroduction)\b', section.metadata["Header"]):
                 return i
         return -1
 

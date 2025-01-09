@@ -7,8 +7,8 @@
 
 # Quality Filtering
 
-* not all PDFs contain Indonesian only, some are in English and also a mix of both. For now, we want predominantly Indonesian-only journals since it is used for Continous PreTraining (CPT).
-* To filter out Indonesian-only (defined as at least 80% of text in PDF) journals, we use a smart LLM with decent Indonesian performance, and reasonably price. Recommended GPT4o-mini (cheaper and won't get rate limitted) or Claude-3-5-sonnet (more expensive and get rate limitted)
+* not all PDFs contain Indonesian only, some are in English and also a mix of both. For now, we want predominantly Indonesian-only journals used for Continous PreTraining (CPT)
+* To filter out Indonesian-only (defined as at least 80% of text in PDF) journals, we use a smart LLM with decent Indonesian performance, and reasonable price. Recommended GPT4o-mini (cheaper and won't get rate limitted). Claude-3-5-sonnet is more expensive and will get rate limitted.
 
 1. use ```filter_pdfs.py``` in ideally a machine with many cores to maximises PySpark parallelism
     * test on small number of PDFs first before running on complete subset. Use ```indo_journals_sample``` directory for this
@@ -27,9 +27,8 @@
 * the best OCR that parses section contents well is MathPix, but is expensive when accessed by API, which adds up for large scale extractions. 
 * Marker-pdf is an open source OCR engine able to parse sections reasonably well. Price more reasonably since paying for price per GPU/hour. 
     * 1 subset uses 1xH100 node for ~3 hours
-* use ```marker_spark_pipeline_multi_gpu.py``` which wraps marker (requiring GPU to run) with PySpark to maximise throughput of large scale PDF extraction
-* <insert part using indo_journal_pipeline repo>
-* output will be ```subset_n_final_output.csv```
+* use ```marker_spark_pipeline_single_gpu.py``` which wraps marker (requiring single GPU to run) with PySpark to maximise throughput of large scale PDF extraction and include REGEX filtering based on FineWeb Edu
+* output will be ```subset_n_final_output.csv```, which follows most closely to the outputs of [fineweb-edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu/viewer/sample-10BT/train?q=arxiv&row=379320) arxiv 
 
 ## Extensions
 * VLMs are commonly used not for OCR, could explore

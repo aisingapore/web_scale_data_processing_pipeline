@@ -1,18 +1,20 @@
 # Data Processing Pipeline
 
 # Description
-The complete data pipeline is found in the ```pipeline``` directory, which provides an implementation used to extract text from raw scraped outputs from open web journals. Depending on your starting point, the pipeline is easily adaptable due to its modular nature. 
+This data pipeline is adapted from the [FineWeb Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu) pipeline used to extract educational web resources (i.e. Arxiv) for pretraining large language models. An [example row](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu/viewer/sample-10BT/train?q=arxiv&row=379320) of data extracted from this pipeline is the objective. The current implementation was used to extract text from open web Indonesian journals. Depending on your data source, the pipeline is easily adaptable due to its modular nature. 
+
+The tokens extracted using this pipeline were used to train the [Sahabat AI](https://huggingface.co/GoToCompany) large language models
 
 # Pipeline Steps Overview
-Refer to README.md in ```pipeline``` for more detailed directions
+Refer to README.md files in ```pipeline``` for more detailed directions
 
 1. Filtering from web scraped outputs
-* Web scraped outputs usually contain unwanted files (i.e. .html, .js files), first we need to filter them, which is done using the ```pipeline/raw_data_processing``` step
+* Web scraped outputs usually contain unwanted files (i.e. .html, .js files). First, we need to filter out the PDF files only which provide us useful text. This is done using the ```pipeline/raw_data_processing``` step
 
 2. Quality Filtering
 * Depending on use case, you might want to filter and sort the types of content accordingly
 * In this case, our objective is to improve Indonesian performance using pretraining, so we focus on filtering for Indonesian data from the open web source
-* Inspired by modern data filtering techniques used by [FineWeb Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu), we adopt a simplified LLM-based quality filtering, using GPT4o-mini as the filtering model for its reasonable performance in Indonesian
+* Inspired by modern data filtering techniques used by in FineWeb Edu, we adopt a simplified LLM-based quality filtering, using GPT4o-mini as the filtering model for its reasonable performance in Indonesian
    * Refer to the prompt provided in ```quality_filtering/filter_pdfs.py``` for more details
    * As we are doing extraction at scale, only the first 15000 characters are considered in this filtering step as an arbitrary figure to prevent API costs from going out of control at scale - do estimate the cost of each batch before running the pipeline
    * Depending on your context, you should also consider including context specific heuristics-based filtering, like how we filtered out PDFs with only 1 page, which are known to be cover pages with little semantic value
